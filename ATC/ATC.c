@@ -45,6 +45,7 @@ void TaskDispInit();
 void TaskDispAircraft();
 void TaskDispAirport();
 
+
 void TaskAircraftLanding();
 void TaskAircraftMake(void *data);
 
@@ -55,10 +56,11 @@ int main (void) {
 	
 	SemAir = OSSemCreate(AIRCRAFT_MAX);
   SemLanding = OSSemCreate(1);
+
 	//OSTaskCreate(task코드, 전달인자, task stack, 우선순위)	
 	OSTaskCreate(TaskDispAirport, NULL, &TaskStk[0][TASK_STK_SIZE - 1], TASK_PRIO/2);
 	OSTaskCreate(TaskAircraftMake, NULL, &TaskStk[1][TASK_STK_SIZE - 1], TASK_PRIO);
-	OSTaskCreate(TaskAircraftLanding, NULL, &TaskStk[1][TASK_STK_SIZE - 1], TASK_PRIO+1);
+  //OSTaskCreate(TaskAircraftLanding, NULL, &TaskStk[2][TASK_STK_SIZE - 1], TASK_PRIO*2);
 
 	
 	OSStart();     // multitasking 시작 
@@ -111,6 +113,7 @@ void TaskDispAirport() {
 	TaskDispInit();
 
 	for (;;) {
+	
 		if (PC_GetKey(&key)) {                             /* See if key has been pressed              */
 			if (key == 0x1B) {                             /* Yes, see if it's the ESCAPE key          */
 				exit(0);                                   /* Yes, return to DOS                       */
@@ -128,7 +131,7 @@ void TaskDispAirport() {
 
 void TaskAircraftMake(void *data) {
 	
-	INT8U delay, fuel, color, ERR, posX, posY = 0;	
+	INT8U delay, fuel, color, ERR, posX, posY, state;	
 
 	while(TRUE) {
 
@@ -136,6 +139,7 @@ void TaskAircraftMake(void *data) {
 
 
 		srand(time(NULL));
+		state = READY;
 		posX = (rand()%30) + 1;
 	  posY = (rand()%12) + 1;
 		fuel = (rand()%3) + 1;
@@ -148,7 +152,7 @@ void TaskAircraftMake(void *data) {
 			position = 0;
 		} 
 		*/
-		
+		AircraftInfo[position].state = state;
 		AircraftInfo[position].posX = posX;
 		AircraftInfo[position].posY = posY;
 		AircraftInfo[position].color = color;
@@ -160,13 +164,13 @@ void TaskAircraftMake(void *data) {
 		OSTimeDly(delay);
 		
 		position++;
-		
 	}
 }
 
 void TaskAircraftLanding() {
 	INT8U i;
-	INT8U landing = 0, ERR = 0;
+	INT8U landing = 0;
+	INT8U ERR;
 
   /* 
 	for(i = 0; i < AIRCRAFT_MAX, i++) {
@@ -178,22 +182,26 @@ void TaskAircraftLanding() {
 	} 
 	*/
 	while(TRUE) {
-		OSSemPend(SemLanding, 0, &ERR);
 		
-		AircraftInfo[landing].posX = StartPos[0];
-		AircraftInfo[landing].posY = StartPos[1];
-    
-		for(;;) {
-			if(AircraftInfo[landing].posX < RunwayMax) {
-				AircraftInfo[landing].posX += MoveX;
-			}else {
-				AircraftInfo[landing].state = REMOVAL;
-				OSSemPost(SemAir);
-				OSSemPost(SemLanding);
-				landing++;
-				break;
+		if(AircraftInfo[landing].state == READY) {
+			OSSemPend(SemLanding, 0, &ERR);
+			
+			AircraftInfo[landing].posX = StartPos[0];
+			AircraftInfo[landing].posY = StartPos[1];
+			
+			while(TRUE) {
+				if(AircraftInfo[landing].posX < RunwayMax) {
+					AircraftInfo[landing].posX += MoveX;
+				}else {
+					AircraftInfo[landing].state = REMOVAL;
+					OSSemPost(SemAir);
+					OSSemPost(SemLanding);
+					landing++;
+					break;
+				}
 			}
 		}
+		OSTimeDly(1);
 	}
 }
 
