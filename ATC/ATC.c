@@ -43,11 +43,11 @@ INT8U ColorArray[COLORS] = { DISP_FGND_RED + DISP_BGND_LIGHT_GRAY,
 
 void TaskDispInit();
 void TaskDispAircraft();
-void TaskDispAirport();
+void TaskDispAirport(void *pdata);
 
 
-void TaskAircraftLanding();
-void TaskAircraftMake(void *data);
+void TaskAircraftLanding(void *pdata);
+void TaskAircraftMake(void *pdata);
 
 int main (void) {
 	INT8U i;
@@ -59,9 +59,9 @@ int main (void) {
 
 	//OSTaskCreate(task코드, 전달인자, task stack, 우선순위)	
 	
-	OSTaskCreate(TaskDispAirport, NULL, &TaskStk[0][TASK_STK_SIZE - 1], TASK_PRIO/2);
-	OSTaskCreate(TaskAircraftMake, NULL, &TaskStk[1][TASK_STK_SIZE - 1], TASK_PRIO);
-  OSTaskCreate(TaskAircraftLanding, NULL, &TaskStk[2][TASK_STK_SIZE - 1], TASK_PRIO*2);
+	OSTaskCreate(TaskDispAirport, (void*) NULL, &TaskStk[0][TASK_STK_SIZE - 1], TASK_PRIO/2);
+	OSTaskCreate(TaskAircraftMake, (void*) NULL, &TaskStk[1][TASK_STK_SIZE - 1], TASK_PRIO);
+  OSTaskCreate(TaskAircraftLanding, (void*) NULL, &TaskStk[2][TASK_STK_SIZE - 1], TASK_PRIO*2);
 
 	
 	OSStart();     // multitasking 시작 
@@ -106,7 +106,7 @@ void TaskDispAircraft() {
 	
 }
 
-void TaskDispAirport() {
+void TaskDispAirport(void *pdata) {
 	INT8U msg[40];
 	INT8U i;
 	INT16S key;
@@ -169,7 +169,7 @@ void TaskAircraftMake(void *data) {
 	}
 }
 
-void TaskAircraftLanding() {
+void TaskAircraftLanding(void *pdata) {
 	INT8U i;
 	INT8U landing = 0;
 	INT8U ERR;
