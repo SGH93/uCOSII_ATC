@@ -1,14 +1,20 @@
 #include "includes.h"
 #include <time.h>
 
-#define TASK_STK_SIZE 512
-#define N_TASKS 5
-#define AIRCRAFT_MAX 10
-#define COLORS 7
 #define TASK_PRIO 10
+#define TASK_STK_SIZE 512
+#define N_TASKS 10
+
+
+#define COLORS 7
+
+#define N_AIRCRAFT 15
+#define RUNWAY_MAX 77
+#define N_RUNWAY 4
 
 #define READY 1
-#define REMOVAL 2
+#define LANDING 2
+#define REMOVAL 3
 
 #define EMPTY 1
 #define HALF 2
@@ -25,12 +31,12 @@ typedef struct {
 OS_STK TaskStk[N_TASKS][TASK_STK_SIZE]; // task stack 정의
 OS_EVENT *SemAir;
 OS_EVENT *SemLanding; 
-AIRCRAFT_INFO AircraftInfo[AIRCRAFT_MAX];
+AIRCRAFT_INFO AircraftInfo[N_AIRCRAFT];
 
-INT8U StartPos[2] = {5, 18};
+INT8U Collision[N_RUNWAY] = { FALSE, FALSE, FALSE, FALSE};
+INT8U StartPos[N_RUNWAY][2] = {5, 9, 5, 12, 5, 15, 5, 18};
 INT8U MoveX = 6;
 INT8U position = 0;
-INT8U RunwayMax = 77; 
 INT8U ColorArray[COLORS] = { DISP_FGND_RED + DISP_BGND_LIGHT_GRAY,
 														DISP_FGND_BLUE + DISP_BGND_LIGHT_GRAY,
 														DISP_FGND_GREEN + DISP_BGND_LIGHT_GRAY,
@@ -54,14 +60,16 @@ int main (void) {
 	OSInit();           // uC/OS-II 초기화
 	srand(time(NULL));  // 난수 생성 
 	
-	SemAir = OSSemCreate(AIRCRAFT_MAX);
-  SemLanding = OSSemCreate(1);
+	SemAir = OSSemCreate(N_AIRCRAFT);
+  SemLanding = OSSemCreate(N_RUNWAY);
 
 	//OSTaskCreate(task코드, 전달인자, task stack, 우선순위)	
 	
 	OSTaskCreate(TaskDispAirport, (void*) NULL, &TaskStk[0][TASK_STK_SIZE - 1], TASK_PRIO/2);
 	OSTaskCreate(TaskAircraftMake, (void*) NULL, &TaskStk[1][TASK_STK_SIZE - 1], TASK_PRIO);
-  OSTaskCreate(TaskAircraftLanding, (void*) NULL, &TaskStk[2][TASK_STK_SIZE - 1], TASK_PRIO*2);
+  for(i=1; i < N_RUNWAY+1; i++) {
+		OSTaskCreate(TaskAircraftLanding, (void*) NULL, &TaskStk[i+1][TASK_STK_SIZE - 1], (INT8U)(TASK_PRIO + i));
+	}
 
 	
 	OSStart();     // multitasking 시작 
@@ -78,15 +86,15 @@ void  TaskDispInit() {
 	PC_DispStr(0, 5,  "                                                   < PRESS 'ESC' TO QUIT >      ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 6,  "                                                  *************************     ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 7,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 8,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 8,  "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 9,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 10, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 11, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 10, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 11, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 12, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 13, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 14, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 13, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 14, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 15, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 16, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 16, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 17, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 18, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 19, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
@@ -98,9 +106,12 @@ void  TaskDispInit() {
 
 void TaskDispAircraft() {
 	INT8U i;	
+	PC_DispStr(0, 9,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 12, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 15, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 18, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	for(i = 0; i < AIRCRAFT_MAX; i++) {
-		if(AircraftInfo[i].state == READY) 
+	for(i = 0; i < N_AIRCRAFT; i++) {
+		if(AircraftInfo[i].state == READY || AircraftInfo[i].state == LANDING) 
 			PC_DispStr(AircraftInfo[i].posX, AircraftInfo[i].posY, "A", AircraftInfo[i].color );
 	}
 	
@@ -137,31 +148,28 @@ void TaskAircraftMake(void *data) {
 	while(TRUE) {
 
 		OSSemPend(SemAir, 0, &ERR);	
-
-
-		srand(time(NULL));
-		state = READY;
-		posX = (rand()%30) + 1;
-	  posY = (rand()%12) + 1;
-		fuel = (rand()%3) + 1;
-		color = ColorArray[(INT8U)(rand() % (COLORS - 1))];
-		/*
-		while(Collision){			
-			OSTimeDly(1);
-		}
-		*/  
-		if(position >= AIRCRAFT_MAX){
-			position = 0;
-		} 
 		
-		AircraftInfo[position].state = state;
-		AircraftInfo[position].posX = posX;
-		AircraftInfo[position].posY = posY;
-		AircraftInfo[position].color = color;
-		AircraftInfo[position].fuel = FULL;
-		//Collision = TRUE;
-		//OSSemPost(SemAir);
-		delay = (INT8U)(rand() % 7 + 1);
+		if(position >= N_AIRCRAFT){
+			position = 0;
+		}
+
+		if(AircraftInfo[position].state != READY && AircraftInfo[position].state != LANDING) {
+			srand(time(NULL));
+			state = READY;
+			posX = (rand()%30) + 1;
+			posY = (rand()%5) + 1;
+			fuel = (rand()%3) + 1;
+			color = ColorArray[(INT8U)(rand() % (COLORS - 1))];
+
+		
+			
+			AircraftInfo[position].state = state;
+			AircraftInfo[position].posX = posX;
+			AircraftInfo[position].posY = posY;
+			AircraftInfo[position].color = color;
+			AircraftInfo[position].fuel = FULL;
+		}
+		delay = (INT8U)(rand() % 4 + 1);
 
 		OSTimeDly(delay);
 		
@@ -172,43 +180,48 @@ void TaskAircraftMake(void *data) {
 void TaskAircraftLanding(void *pdata) {
 	INT8U i;
 	INT8U landing = 0;
-	INT8U ERR;
+	INT8U ERR, runway = 0;
 
-  /* 
-	for(i = 0; i < AIRCRAFT_MAX, i++) {
-		if(AircraftInfo[i].fuel == EMPTY) {
-			position = i;
-			landing = i;
-			break;
-		}
-	} 
-	*/
+
 	while(TRUE) {
 		
 		if(AircraftInfo[landing].state == READY) {
+			
 			OSSemPend(SemLanding, 0, &ERR);
 			
+			
+			for(i=0; i < N_RUNWAY; i++) {
+				if(Collision[i] == FALSE) {
+					runway = i;
+					break;
+				}
+			}
+
+			Collision[runway] = TRUE;
 			PC_DispStr(AircraftInfo[landing].posX, AircraftInfo[landing].posY, " ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-			AircraftInfo[landing].posX = StartPos[0];
-			AircraftInfo[landing].posY = StartPos[1];
+			
+			AircraftInfo[landing].state = LANDING;
+			AircraftInfo[landing].posX = StartPos[runway][0];
+			AircraftInfo[landing].posY = StartPos[runway][1];
 			
 			while(TRUE) {
-				if(AircraftInfo[landing].posX < RunwayMax) {
+				if(AircraftInfo[landing].posX < RUNWAY_MAX) {
 					AircraftInfo[landing].posX += MoveX;
 				}else {
+					PC_DispStr(AircraftInfo[landing].posX, AircraftInfo[landing].posY, " ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 					AircraftInfo[landing].state = REMOVAL;
 					OSSemPost(SemAir);
 					OSSemPost(SemLanding);
-					landing++;
+					Collision[runway] = FALSE;
 					break;
 				}
-			OSTimeDly(1);
-			}
-
-			if(landing >= AIRCRAFT_MAX){
-				landing = 0;
-			} 			
+				OSTimeDly(1);
+			}		
 		}
+		landing++;
+		if(landing >= N_AIRCRAFT){
+			landing = 0;
+		} 	
 	}
 }
 
