@@ -28,9 +28,9 @@ OS_EVENT *SemLanding;
 AIRCRAFT_INFO AircraftInfo[AIRCRAFT_MAX];
 
 INT8U StartPos[2] = {5, 18};
-INT8U MoveX = 2;
+INT8U MoveX = 6;
 INT8U position = 0;
-INT8U RunwayMax = 79; 
+INT8U RunwayMax = 77; 
 INT8U ColorArray[COLORS] = { DISP_FGND_RED + DISP_BGND_LIGHT_GRAY,
 														DISP_FGND_BLUE + DISP_BGND_LIGHT_GRAY,
 														DISP_FGND_GREEN + DISP_BGND_LIGHT_GRAY,
@@ -58,9 +58,10 @@ int main (void) {
   SemLanding = OSSemCreate(1);
 
 	//OSTaskCreate(task코드, 전달인자, task stack, 우선순위)	
+	
 	OSTaskCreate(TaskDispAirport, NULL, &TaskStk[0][TASK_STK_SIZE - 1], TASK_PRIO/2);
 	OSTaskCreate(TaskAircraftMake, NULL, &TaskStk[1][TASK_STK_SIZE - 1], TASK_PRIO);
-  //OSTaskCreate(TaskAircraftLanding, NULL, &TaskStk[2][TASK_STK_SIZE - 1], TASK_PRIO*2);
+  OSTaskCreate(TaskAircraftLanding, NULL, &TaskStk[2][TASK_STK_SIZE - 1], TASK_PRIO*2);
 
 	
 	OSStart();     // multitasking 시작 
@@ -97,7 +98,7 @@ void  TaskDispInit() {
 
 void TaskDispAircraft() {
 	INT8U i;	
-	//TaskViewClear();
+	PC_DispStr(0, 18, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	for(i = 0; i < AIRCRAFT_MAX; i++) {
 		if(AircraftInfo[i].state == READY) 
 			PC_DispStr(AircraftInfo[i].posX, AircraftInfo[i].posY, "A", AircraftInfo[i].color );
@@ -147,11 +148,12 @@ void TaskAircraftMake(void *data) {
 		/*
 		while(Collision){			
 			OSTimeDly(1);
-		}  
+		}
+		*/  
 		if(position >= AIRCRAFT_MAX){
 			position = 0;
 		} 
-		*/
+		
 		AircraftInfo[position].state = state;
 		AircraftInfo[position].posX = posX;
 		AircraftInfo[position].posY = posY;
@@ -186,6 +188,7 @@ void TaskAircraftLanding() {
 		if(AircraftInfo[landing].state == READY) {
 			OSSemPend(SemLanding, 0, &ERR);
 			
+			PC_DispStr(AircraftInfo[landing].posX, AircraftInfo[landing].posY, " ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 			AircraftInfo[landing].posX = StartPos[0];
 			AircraftInfo[landing].posY = StartPos[1];
 			
@@ -199,9 +202,13 @@ void TaskAircraftLanding() {
 					landing++;
 					break;
 				}
+			OSTimeDly(1);
 			}
+
+			if(landing >= AIRCRAFT_MAX){
+				landing = 0;
+			} 			
 		}
-		OSTimeDly(1);
 	}
 }
 
