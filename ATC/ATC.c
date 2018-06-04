@@ -7,7 +7,7 @@
 
 #define COLORS 7
 
-#define N_AIRCRAFT 10
+#define N_AIRCRAFT 60
 #define RUNWAY_MAX 72
 #define N_RUNWAY 4
 
@@ -181,8 +181,8 @@ void TaskAircraftMake(void *data) {
 			posX = (rand()%50) + 10;
 			//posY = (rand()%5) + 1;
 			posY = 4;
-			fuel = (rand()%7) + 1;
-			speed = (rand()%10) + 5;
+			fuel = (rand()%5) + 1;
+			speed = (rand()%3) + 1;
 			radius = 4;
 			name = cnt;
 			if(fuel == EMPTY) color = ColorArray[0];
@@ -236,16 +236,15 @@ void TaskAircraftLanding(void *pdata) {
 					OSSemPost(SemAir);
 					OSSemPost(SemLanding);
 					Collision[runway] = FALSE;
-					OSTimeDly(1);
 					sprintf(msg, "A%d arrived", AircraftInfo[landing].name);
 					err = OSQPost(msg_q, msg); 
-				  while (err != OS_NO_ERR) err = OSQPost(msg_q, msg);
-					if(landing == N_AIRCRAFT-1) {
+				  //while (err != OS_NO_ERR) err = OSQPost(msg_q, msg);
+					/* if(landing == N_AIRCRAFT) {
 							OSTaskDel(16);
 							OSTaskDel(17);
 							OSTaskDel(18);
 							OSTaskDel(19);
-					}
+					} */
 					break;
 				}
 				OSTimeDly(1);
@@ -291,7 +290,7 @@ void TaskArrivals(void *pdata) {
 	for (;;) {
 		msg = OSQPend(msg_q, 0, &err);
 		if (msg != 0) {
-			PC_DispStr(2, 25, msg, DISP_FGND_YELLOW + DISP_BGND_BLUE);
+			PC_DispStr(2, 23, msg, DISP_FGND_YELLOW + DISP_BGND_BLUE);
 		}
 		OSTimeDly(1);
 	}
@@ -306,12 +305,12 @@ void TaskThunder(void *pdata){
 		thunder = (rand()%30) + 1;
 		
 		if(thunder == 4) {
-			PC_DispStr(65, 25, "Thunder!!!", DISP_FGND_YELLOW + DISP_BGND_BLUE);
+			PC_DispStr(65, 23, "Thunder!!!", DISP_FGND_YELLOW + DISP_BGND_BLUE);
 			for(i=16; i<20; i++) {
 				OSTaskSuspend(i);
 			}
 			OSTimeDly(10);
-			PC_DispStr(65, 25, "             ", DISP_FGND_YELLOW + DISP_BGND_LIGHT_GRAY);
+			PC_DispStr(65, 23, "             ", DISP_FGND_YELLOW + DISP_BGND_LIGHT_GRAY);
 			for(i=16; i<20; i++) {
 				OSTaskResume(i);
 			}
