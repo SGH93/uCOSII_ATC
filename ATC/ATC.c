@@ -98,10 +98,10 @@ void DispInit() {
 	PC_DispStr(0, 1,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 2,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 3,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 4,  "                                                                 ___________    ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 5,  "                                                                 ! control !    ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 6,  "                                                                 !  tower  !    ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 7,  "                                                                 -----------    ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 4,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 5,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 6,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 7,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 8,  "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 9,  "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 10, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
@@ -115,9 +115,11 @@ void DispInit() {
 	PC_DispStr(0, 18, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 19, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
 	PC_DispStr(0, 20, "                    =========================================================== ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 21, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 22, "                                                                                ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
-	PC_DispStr(0, 23, "                                                       < PRESS 'ESC' TO QUIT >  ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 21, "                                    ___________                                 ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 22, "                                    ! control !                                 ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 23, "                                    !  tower  !                                 ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+	PC_DispStr(0, 24, "                                    -----------       < PRESS 'ESC' TO QUIT >   ", DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY);
+
 }
 
 void DispAircraft() {
@@ -154,7 +156,7 @@ void TaskDispAirport(void *pdata) {
 		        
     DispInit(); 
 		PC_GetDateTime(msg);
-		PC_DispStr(2, 23, msg, DISP_FGND_YELLOW + DISP_BGND_BLUE);
+		PC_DispStr(2, 24, msg, DISP_FGND_YELLOW + DISP_BGND_BLUE);
 		DispAircraft();
 
 		OSTimeDly(1);
@@ -170,18 +172,17 @@ void TaskAircraftMake(void *data) {
 		OSSemPend(SemAir, 0, &ERR);	
 		
 		if(position >= N_AIRCRAFT){
-			break;
+			OSTaskDel(11);
 		}
 
 		if(AircraftInfo[position].state != READY && AircraftInfo[position].state != LANDING) {
 			srand(time(NULL));
 			state = READY;
-			//posX = (rand()%30) + 1;
+			posX = (rand()%22) + 10;
 			//posY = (rand()%5) + 1;
-			posX = 30;
 			posY = 4;
 			fuel = (rand()%10) + 1;
-			speed = (rand()%6) + 3;
+			speed = (rand()%8) + 3;
 			radius = 4;
 			name = cnt;
 			if(fuel == EMPTY) color = ColorArray[0];
@@ -198,7 +199,7 @@ void TaskAircraftMake(void *data) {
 			AircraftInfo[position].name = name;
 			AircraftInfo[position].radius = radius;
 		}
-		delay = (INT8U)(rand() % 4 + 1);
+		delay = (INT8U)(rand() % 6 + 1);
 
 		OSTimeDly(delay);
 		cnt++;
@@ -216,18 +217,12 @@ void TaskAircraftLanding(void *pdata) {
 	
 	while(TRUE) {
 		
-		OSSemPend(SemLanding, 0, &ERR);
+		
 
-		for(i=0; i < N_AIRCRAFT; i++) {
-			if(AircraftInfo[i].state == READY) {
-				landing = i;
-				break;
-			}
-		} 
 		if(AircraftInfo[landing].state == READY && Collision[runway] == FALSE && AircraftInfo[landing].fuel != EMPTY) {
 			
 			
-			
+			OSSemPend(SemLanding, 0, &ERR);
 			Collision[runway] = TRUE;
 			AircraftInfo[landing].state = LANDING;
 			AircraftInfo[landing].posX = StartPos[runway][0];
@@ -251,15 +246,15 @@ void TaskAircraftLanding(void *pdata) {
 			}
 
 		}
+
 		runway++;
 		if(runway >= N_RUNWAY){
 			runway = 0;
 		}
-		/* landing++;
+		landing++;
 		if(landing >= N_AIRCRAFT){
-			//landing = 0;
-			break;
-		} */			 	
+			landing = 0;
+		}		 	
 	}
 }
 
@@ -290,7 +285,7 @@ void TaskArrivals(void *pdata) {
 	for (;;) {
 		msg = OSQPend(msg_q, 0, &err);
 		if (msg != 0) {
-			PC_DispStr(2, 24, msg, DISP_FGND_YELLOW + DISP_BGND_BLUE);
+			PC_DispStr(2, 25, msg, DISP_FGND_YELLOW + DISP_BGND_BLUE);
 		}
 		OSTimeDly(1);
 	}
@@ -305,12 +300,12 @@ void TaskThunder(void *pdata){
 		thunder = (rand()%10) + 1;
 		
 		if(thunder == 4) {
-			PC_DispStr(20, 24, "Thunder!!!", DISP_FGND_YELLOW + DISP_BGND_BLUE);
+			PC_DispStr(20, 25, "Thunder!!!", DISP_FGND_YELLOW + DISP_BGND_BLUE);
 			for(i=16; i<20; i++) {
 				OSTaskSuspend(i);
 			}
 			OSTimeDly(10);
-			PC_DispStr(20, 24, "             ", DISP_FGND_YELLOW + DISP_BGND_BLACK);
+			PC_DispStr(20, 25, "             ", DISP_FGND_YELLOW + DISP_BGND_BLACK);
 			for(i=16; i<20; i++) {
 				OSTaskResume(i);
 			}
@@ -328,7 +323,7 @@ void TaskCraftMove(void*data){
       //OSSemPend(Sem_move, 0, &ERR);
       //위쪽으로 이동
 
-      for(i=0; i<position; i++){
+      for(i=0; i<N_AIRCRAFT; i++){
          if(AircraftInfo[i].state!=READY)
             continue;
                
