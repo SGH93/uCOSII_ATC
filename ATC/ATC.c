@@ -7,7 +7,7 @@
 
 #define COLORS 7
 
-#define N_AIRCRAFT 60
+#define N_AIRCRAFT 50
 #define RUNWAY_MAX 72
 #define N_RUNWAY 4
 
@@ -40,10 +40,10 @@ INT8U Collision[N_RUNWAY] = { FALSE, FALSE, FALSE, FALSE};
 INT8U StartPos[N_RUNWAY][2] = {5, 10, 5, 13, 5, 16, 5, 19};
 INT8U position = 0;
 INT16U cnt = 1;
+INT8U landing = 0;
 INT8U ColorArray[COLORS] = { DISP_FGND_RED + DISP_BGND_LIGHT_GRAY,
-														DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY,
-														DISP_FGND_BLUE + DISP_BGND_LIGHT_GRAY,
-
+														 DISP_FGND_BLACK + DISP_BGND_LIGHT_GRAY,
+														 DISP_FGND_BLUE + DISP_BGND_LIGHT_GRAY,
 };
 
 
@@ -179,10 +179,9 @@ void TaskAircraftMake(void *data) {
 			srand(time(NULL));
 			state = READY;
 			posX = (rand()%50) + 10;
-			//posY = (rand()%5) + 1;
 			posY = 4;
 			fuel = (rand()%5) + 1;
-			speed = (rand()%3) + 1;
+			speed = (rand()%4) + 2;
 			radius = 4;
 			name = cnt;
 			if(fuel == EMPTY) color = ColorArray[0];
@@ -199,7 +198,7 @@ void TaskAircraftMake(void *data) {
 			AircraftInfo[position].name = name;
 			AircraftInfo[position].radius = radius;
 		}
-		delay = (INT8U)(rand() % 6 + 1);
+		delay = (INT8U)(rand() % 4 + 1);
 
 		OSTimeDly(delay);
 		cnt++;
@@ -209,59 +208,44 @@ void TaskAircraftMake(void *data) {
 
 void TaskAircraftLanding(void *pdata) {
 	INT8U i;
-	INT8U landing = 0;
+	
 	INT8U ERR, err, runway = 0;
 	char msg[100];
 	
 	
 	
 	while(TRUE) {
-		
-		
-
-		if(AircraftInfo[landing].state == READY && Collision[runway] == FALSE && AircraftInfo[landing].fuel != EMPTY) {
-			
-			
+		srand(time(NULL));
+		runway = rand() % 4;
+		if(Collision[runway] == FALSE) {
 			OSSemPend(SemLanding, 0, &ERR);
-			Collision[runway] = TRUE;
-			AircraftInfo[landing].state = LANDING;
-			AircraftInfo[landing].posX = StartPos[runway][0];
-			AircraftInfo[landing].posY = StartPos[runway][1];
-			
 			while(TRUE) {
-				if(AircraftInfo[landing].posX < RUNWAY_MAX) {
-					AircraftInfo[landing].posX += AircraftInfo[landing].speed;
-				}else {
-					AircraftInfo[landing].state = REMOVAL;
-					OSSemPost(SemAir);
-					OSSemPost(SemLanding);
-					Collision[runway] = FALSE;
-					sprintf(msg, "A%d arrived", AircraftInfo[landing].name);
-					err = OSQPost(msg_q, msg); 
-				  //while (err != OS_NO_ERR) err = OSQPost(msg_q, msg);
-					/* if(landing == N_AIRCRAFT) {
-							OSTaskDel(16);
-							OSTaskDel(17);
-							OSTaskDel(18);
-							OSTaskDel(19);
-					} */
-					break;
-				}
-				OSTimeDly(1);
+				if(AircraftInfo[position].fuel != EMPTY && AircraftInfo[position].state == READY) break;
 			}
 
+			Collision[runway] = TRUE;
+			AircraftInfo[position].state = LANDING;
+			AircraftInfo[position].posX = StartPos[runway][0];
+			AircraftInfo[position].posY = StartPos[runway][1];
+			
+			while(TRUE) {
+				if((AircraftInfo[position].posX + AircraftInfo[position].speed) < RUNWAY_MAX) {
+					AircraftInfo[i].posX += AircraftInfo[position].speed;
+					OSTimeDly(1);
+				}else {
+					AircraftInfo[i].state = REMOVAL;
+					sprintf(msg, "A%d arrived", AircraftInfo[i].name);
+					Collision[runway] = FALSE;		
+					err = OSQPost(msg_q, msg);
+				}
+			
+			}
+	
+			OSSemPost(SemLanding);
 		}
-
-		runway++;
-		if(runway >= N_RUNWAY){
-			runway = 0;
-		}
-		landing++;
-		if(landing >= N_AIRCRAFT){
-			landing = 0;
-		}		 	
 	}
 }
+		
 
 void TaskEmergency(void *pdata) {
 	INT8U i;
